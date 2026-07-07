@@ -1,0 +1,33 @@
+# Fichiers d'environnement
+.env
+.env.local
+.env.production
+
+# Dossiers de dépendances
+node_modules/
+**/node_modules/
+
+# Fichiers de logs
+logs/
+*.log
+npm-debug.log*
+
+# Fichiers sensibles (scripts avec mots de passe)
+**/admin.js
+**/createTestUsers.js
+**/linkEmployeeToUser.js
+**/scripts/
+
+# Dossiers système
+.DS_Store
+Thumbs.db
+
+# Fichiers de build
+dist/
+build/
+.vercel/
+.netlify/
+
+# Fichiers de l'éditeur
+.vscode/
+.idea/
