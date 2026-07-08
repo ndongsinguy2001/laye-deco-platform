@@ -5,8 +5,9 @@ let io = null;
 const initSocket = (server) => {
   io = new Server(server, {
     cors: {
-      origin: 'http://localhost:3000',
-      methods: ['GET', 'POST']
+      origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5000', 'https://laye-deco-platform.netlify.app'],
+      methods: ['GET', 'POST', 'PUT', 'DELETE'],
+      credentials: true
     }
   });
 
@@ -34,10 +35,14 @@ const getIO = () => {
 };
 
 const sendNotification = (role, notification) => {
-  const io = getIO();
-  io.to(role).emit('notification', notification);
-  if (role !== 'admin') {
-    io.to('admin').emit('notification', notification);
+  try {
+    const io = getIO();
+    io.to(role).emit('notification', notification);
+    if (role !== 'admin') {
+      io.to('admin').emit('notification', notification);
+    }
+  } catch (error) {
+    console.log('⚠️ Erreur envoi notification:', error.message);
   }
 };
 
