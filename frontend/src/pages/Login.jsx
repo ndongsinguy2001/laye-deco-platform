@@ -71,10 +71,6 @@ const Login = () => {
             {loading ? 'Connexion...' : 'Se connecter'}
           </button>
         </form>
-
-        <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
-          <p>Compte démo : 77 123 45 67 / Directeur123!</p>
-        </div>
       </div>
     </div>
   );
