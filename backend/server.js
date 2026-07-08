@@ -5,7 +5,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const http = require('http');
-const { Server } = require('socket.io');
+const { initSocket } = require('./socket');
 
 const authRoutes = require('./routes/authRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
@@ -20,17 +20,11 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5000'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true
-  }
-});
+initSocket(server);
 
-// CORS pour les requêtes HTTP
+// CORS configuration
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5000'],
+  origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5000', 'https://laye-deco-platform.netlify.app'],
   credentials: true
 }));
 
@@ -51,27 +45,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Laye Déco API fonctionnelle' });
 });
 
-// Socket.IO
-io.on('connection', (socket) => {
-  console.log('🟢 Nouveau client connecté:', socket.id);
-
-  socket.on('join-role', (role) => {
-    socket.join(role);
-    console.log(`📌 Client ${socket.id} a rejoint la salle: ${role}`);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('🔴 Client déconnecté:', socket.id);
-  });
-});
-
-const sendNotification = (role, notification) => {
-  io.to(role).emit('notification', notification);
-  if (role !== 'admin') {
-    io.to('admin').emit('notification', notification);
-  }
-};
-
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('✅ Connecté à MongoDB');
@@ -84,4 +57,4 @@ mongoose.connect(process.env.MONGODB_URI)
     process.exit(1);
   });
 
-module.exports = { app, server, io, sendNotification };
+module.exports = { app, server };
