@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiUser, FiMail, FiShield, FiKey, FiSave, FiRefreshCw, FiDollarSign, FiClock, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
+import { FiUser, FiMail, FiShield, FiKey, FiSave, FiRefreshCw, FiDollarSign, FiClock, FiCheckCircle, FiAlertCircle, FiCalendar, FiLogIn, FiLogOut } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -8,6 +8,7 @@ const Profile = () => {
   const { user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [payments, setPayments] = useState([]);
+  const [attendances, setAttendances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordData, setPasswordData] = useState({
@@ -20,6 +21,7 @@ const Profile = () => {
     fetchProfile();
     if (user?.role === 'daily_worker') {
       fetchPayments();
+      fetchAttendanceHistory();
     }
   }, []);
 
@@ -36,7 +38,6 @@ const Profile = () => {
 
   const fetchPayments = async () => {
     try {
-      // Récupérer l'ID de l'employé depuis le profil
       const profileRes = await api.get('/auth/profile');
       const employeeId = profileRes.data.employeeId;
       
@@ -46,6 +47,20 @@ const Profile = () => {
       }
     } catch (error) {
       console.error('Erreur chargement paiements:', error);
+    }
+  };
+
+  const fetchAttendanceHistory = async () => {
+    try {
+      const profileRes = await api.get('/auth/profile');
+      const employeeId = profileRes.data.employeeId;
+      
+      if (employeeId) {
+        const response = await api.get(`/attendance/employee/${employeeId}`);
+        setAttendances(response.data);
+      }
+    } catch (error) {
+      console.error('Erreur chargement historique pointages:', error);
     }
   };
 
@@ -100,6 +115,35 @@ const Profile = () => {
 
   const getStatusLabel = (status) => {
     const labels = {
+      present: 'Présent',
+      late: 'Retard',
+      absent: 'Absent'
+    };
+    return labels[status] || status;
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      present: 'bg-green-100 text-green-800',
+      late: 'bg-yellow-100 text-yellow-800',
+      absent: 'bg-red-100 text-red-800'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getStatusIcon = (status) => {
+    switch(status) {
+      case 'present':
+        return <FiCheckCircle className="text-green-600" />;
+      case 'late':
+        return <FiClock className="text-yellow-600" />;
+      default:
+        return <FiAlertCircle className="text-red-600" />;
+    }
+  };
+
+  const getPaymentStatusLabel = (status) => {
+    const labels = {
       pending: 'En attente',
       paid: 'Payé',
       partial: 'Partiel'
@@ -107,7 +151,7 @@ const Profile = () => {
     return labels[status] || status;
   };
 
-  const getStatusColor = (status) => {
+  const getPaymentStatusColor = (status) => {
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800',
       paid: 'bg-green-100 text-green-800',
@@ -116,21 +160,16 @@ const Profile = () => {
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
-  const getStatusIcon = (status) => {
-    switch(status) {
-      case 'paid':
-        return <FiCheckCircle className="text-green-600" />;
-      case 'partial':
-        return <FiClock className="text-blue-600" />;
-      default:
-        return <FiAlertCircle className="text-yellow-600" />;
-    }
-  };
-
-  // Calculer les totaux
+  // Calculer les totaux des paiements
   const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
   const totalPaid = payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
   const totalPending = payments.filter(p => p.status === 'pending' || p.status === 'partial').reduce((sum, p) => sum + p.balance, 0);
+
+  // Statistiques des pointages
+  const totalAttendance = attendances.length;
+  const presentCount = attendances.filter(a => a.status === 'present').length;
+  const absentCount = attendances.filter(a => a.status === 'absent').length;
+  const lateCount = attendances.filter(a => a.status === 'late').length;
 
   if (loading) {
     return (
@@ -258,10 +297,37 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Section Journalier : Statistiques et Paiements */}
+      {/* Section Journalier : Statistiques et Historique */}
       {user?.role === 'daily_worker' && (
         <div className="mt-6 space-y-6">
-          {/* Statistiques */}
+          {/* Statistiques des pointages */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+              <FiClock className="text-blue-600" /> 
+              Mes statistiques de pointage
+            </h3>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                <p className="text-xs text-gray-500 dark:text-gray-400">Total pointages</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-white">{totalAttendance}</p>
+              </div>
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+                <p className="text-xs text-gray-500 dark:text-gray-400">Présences</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{presentCount}</p>
+              </div>
+              <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4">
+                <p className="text-xs text-gray-500 dark:text-gray-400">Absences</p>
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{absentCount}</p>
+              </div>
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
+                <p className="text-xs text-gray-500 dark:text-gray-400">Retards</p>
+                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{lateCount}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Paiements */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
               <FiDollarSign className="text-green-600" /> 
@@ -287,7 +353,6 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* Historique des paiements */}
             {payments.length === 0 ? (
               <p className="text-gray-500 dark:text-gray-400 text-center py-4">Aucun paiement enregistré</p>
             ) : (
@@ -312,11 +377,62 @@ const Profile = () => {
                         <td className="px-4 py-2 dark:text-white">{payment.advances.toLocaleString()} FCFA</td>
                         <td className="px-4 py-2 font-semibold dark:text-white">{payment.balance.toLocaleString()} FCFA</td>
                         <td className="px-4 py-2">
-                          <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(payment.status)}`}>
-                            {getStatusIcon(payment.status)}
-                            {getStatusLabel(payment.status)}
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPaymentStatusColor(payment.status)}`}>
+                            {getPaymentStatusLabel(payment.status)}
                           </span>
                         </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Historique des pointages */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+              <FiCalendar className="text-indigo-600" /> 
+              Historique des pointages
+            </h3>
+
+            {attendances.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-4">Aucun pointage enregistré</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Événement</th>
+                      <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Date</th>
+                      <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Arrivée</th>
+                      <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Départ</th>
+                      <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Statut</th>
+                      <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Commentaire</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attendances.map((att) => (
+                      <tr key={att._id} className="border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-4 py-2 dark:text-white">
+                          {att.eventId?.clientName || 'Événement supprimé'}
+                        </td>
+                        <td className="px-4 py-2 dark:text-white">
+                          {att.eventId?.date ? new Date(att.eventId.date).toLocaleDateString() : '-'}
+                        </td>
+                        <td className="px-4 py-2 dark:text-white">
+                          {att.checkIn ? new Date(att.checkIn).toLocaleTimeString() : '-'}
+                        </td>
+                        <td className="px-4 py-2 dark:text-white">
+                          {att.checkOut ? new Date(att.checkOut).toLocaleTimeString() : '-'}
+                        </td>
+                        <td className="px-4 py-2">
+                          <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(att.status)}`}>
+                            {getStatusIcon(att.status)}
+                            {getStatusLabel(att.status)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{att.comments || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
