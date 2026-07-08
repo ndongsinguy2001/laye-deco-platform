@@ -132,9 +132,13 @@ const MainLayout = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex transition-colors">
       {/* Sidebar */}
       <div className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-navy-800 dark:bg-navy-950 text-white transition-all duration-300 flex flex-col shadow-xl`}>
-        <div className="p-4 flex items-center justify-between border-b border-navy-700 dark:border-navy-800">
+        <div className="p-4 flex items-center gap-2 border-b border-navy-700 dark:border-navy-800">
+          <img src="/logo_laye_deco.png" alt="Laye Déco" className="w-8 h-8 object-contain" />
           {sidebarOpen && <h1 className="text-xl font-bold">Laye Déco</h1>}
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-white hover:text-gray-300">
+          <button 
+            onClick={() => setSidebarOpen(!sidebarOpen)} 
+            className="ml-auto text-white hover:text-gray-300"
+          >
             {sidebarOpen ? <FiX size={24} /> : <FiMenu size={24} />}
           </button>
         </div>
