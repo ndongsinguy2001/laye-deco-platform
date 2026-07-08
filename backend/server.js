@@ -4,8 +4,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const http = require('http');
-const { initSocket } = require('./socket');
 
 const authRoutes = require('./routes/authRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
@@ -19,10 +17,6 @@ const userRoutes = require('./routes/userRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-const server = http.createServer(app);
-initSocket(server);
-
-// CORS configuration
 app.use(cors({
   origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5000', 'https://laye-deco-platform.netlify.app'],
   credentials: true
@@ -48,7 +42,7 @@ app.get('/health', (req, res) => {
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('✅ Connecté à MongoDB');
-    server.listen(PORT, () => {
+    app.listen(PORT, () => {
       console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
     });
   })
@@ -56,5 +50,3 @@ mongoose.connect(process.env.MONGODB_URI)
     console.error('❌ Erreur de connexion MongoDB:', err);
     process.exit(1);
   });
-
-module.exports = { app, server };
