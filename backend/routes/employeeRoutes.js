@@ -12,7 +12,7 @@ const {
 const router = express.Router();
 
 router.post('/', authenticate, authorize('admin', 'director'), createEmployee);
-router.get('/', authenticate, authorize('admin', 'director', 'team_leader', 'accountant'), getAllEmployees);
+router.get('/', authenticate, authorize('admin', 'director', 'team_leader', 'accountant', 'daily_worker'), getAllEmployees);
 router.get('/status/:status', authenticate, authorize('admin', 'director', 'team_leader'), getEmployeesByStatus);
 router.get('/:id', authenticate, authorize('admin', 'director', 'team_leader', 'daily_worker'), getEmployeeById);
 router.put('/:id', authenticate, authorize('admin', 'director'), updateEmployee);
