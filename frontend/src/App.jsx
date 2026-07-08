@@ -2,7 +2,6 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from './contexts/AuthContext';
-import { NotificationProvider } from './contexts/NotificationContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import Login from './pages/Login';
 import MainLayout from './layouts/MainLayout';
@@ -45,76 +44,72 @@ function App() {
   return (
     <ThemeProvider>
       <Toaster position="top-right" />
-      <NotificationProvider user={user}>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        
+        <Route element={user ? <MainLayout /> : <Navigate to="/login" />}>
+          <Route path="/" element={<Navigate to="/dashboard" />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/attendance" element={<Attendance />} />
           
-          <Route element={user ? <MainLayout /> : <Navigate to="/login" />}>
-            {/* Routes accessibles à tous */}
-            <Route path="/" element={<Navigate to="/dashboard" />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/attendance" element={<Attendance />} />
-            
-            {/* Routes réservées */}
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute allowedRoles={['director', 'admin', 'team_leader', 'accountant']}>
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/employees" 
-              element={
-                <ProtectedRoute allowedRoles={['director', 'admin']}>
-                  <Employees />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/events" 
-              element={
-                <ProtectedRoute allowedRoles={['director', 'admin', 'team_leader']}>
-                  <Events />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/assignments" 
-              element={
-                <ProtectedRoute allowedRoles={['director', 'admin', 'team_leader']}>
-                  <Assignments />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/payments" 
-              element={
-                <ProtectedRoute allowedRoles={['director', 'admin', 'accountant']}>
-                  <Payments />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/materials" 
-              element={
-                <ProtectedRoute allowedRoles={['director', 'admin']}>
-                  <Materials />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/users" 
-              element={
-                <ProtectedRoute allowedRoles={['director']}>
-                  <Users />
-                </ProtectedRoute>
-              } 
-            />
-          </Route>
-        </Routes>
-      </NotificationProvider>
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute allowedRoles={['director', 'admin', 'team_leader', 'accountant']}>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/employees" 
+            element={
+              <ProtectedRoute allowedRoles={['director', 'admin']}>
+                <Employees />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/events" 
+            element={
+              <ProtectedRoute allowedRoles={['director', 'admin', 'team_leader']}>
+                <Events />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/assignments" 
+            element={
+              <ProtectedRoute allowedRoles={['director', 'admin', 'team_leader']}>
+                <Assignments />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/payments" 
+            element={
+              <ProtectedRoute allowedRoles={['director', 'admin', 'accountant']}>
+                <Payments />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/materials" 
+            element={
+              <ProtectedRoute allowedRoles={['director', 'admin']}>
+                <Materials />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/users" 
+            element={
+              <ProtectedRoute allowedRoles={['director']}>
+                <Users />
+              </ProtectedRoute>
+            } 
+          />
+        </Route>
+      </Routes>
     </ThemeProvider>
   );
 }

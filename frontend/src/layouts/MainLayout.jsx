@@ -1,100 +1,13 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useNotifications } from '../contexts/NotificationContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { motion } from 'framer-motion';
 import { 
   FiHome, FiUsers, FiCalendar, FiUserCheck, FiClock, 
   FiDollarSign, FiPackage, FiUser, FiLogOut, FiMenu, FiX,
-  FiBell, FiSun, FiMoon
+  FiSun, FiMoon
 } from 'react-icons/fi';
-
-const NotificationBell = () => {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications } = useNotifications();
-  const [isOpen, setIsOpen] = useState(false);
-
-  const getIcon = (type) => {
-    switch(type) {
-      case 'assignment': return '👤';
-      case 'attendance': return '⏰';
-      case 'payment': return '💰';
-      case 'material': return '📦';
-      case 'event': return '📅';
-      default: return '📨';
-    }
-  };
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-      >
-        <FiBell size={22} className="text-gray-700 dark:text-gray-300" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
-            {unreadCount}
-          </span>
-        )}
-      </button>
-
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white dark:bg-gray-800 rounded-lg shadow-xl border dark:border-gray-700 z-50 max-h-[500px] flex flex-col">
-          <div className="flex justify-between items-center p-3 border-b dark:border-gray-700">
-            <h3 className="font-semibold dark:text-white">Notifications</h3>
-            <div className="flex gap-2">
-              {notifications.length > 0 && (
-                <button 
-                  onClick={markAllAsRead}
-                  className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800"
-                >
-                  Tout marquer lu
-                </button>
-              )}
-              <button 
-                onClick={clearNotifications}
-                className="text-xs text-red-600 dark:text-red-400 hover:text-red-800"
-              >
-                Effacer tout
-              </button>
-            </div>
-          </div>
-          
-          <div className="overflow-y-auto flex-1">
-            {notifications.length === 0 ? (
-              <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                <FiBell size={32} className="mx-auto mb-2 text-gray-300 dark:text-gray-600" />
-                <p>Aucune notification</p>
-              </div>
-            ) : (
-              notifications.map((notif) => (
-                <div 
-                  key={notif.id}
-                  className={`p-3 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${!notif.read ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
-                  onClick={() => markAsRead(notif.id)}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="text-xl">{getIcon(notif.type)}</span>
-                    <div className="flex-1">
-                      <p className="text-sm dark:text-gray-200">{notif.message}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {new Date(notif.timestamp).toLocaleTimeString()}
-                      </p>
-                    </div>
-                    {!notif.read && (
-                      <span className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full mt-1"></span>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 const MainLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -102,7 +15,6 @@ const MainLayout = () => {
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
-  // Définir les menus selon le rôle
   const getMenuItems = () => {
     const role = user?.role;
     
@@ -130,7 +42,6 @@ const MainLayout = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex transition-colors">
-      {/* Sidebar */}
       <div className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-navy-800 dark:bg-navy-950 text-white transition-all duration-300 flex flex-col shadow-xl`}>
         <div className="p-4 flex items-center gap-2 border-b border-navy-700 dark:border-navy-800">
           <img src="/logo_laye_deco.png" alt="Laye Déco" className="w-8 h-8 object-contain" />
@@ -165,11 +76,10 @@ const MainLayout = () => {
         </div>
       </div>
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col">
         <header className="bg-white dark:bg-gray-800 shadow-sm px-6 py-4 flex justify-between items-center transition-colors">
           <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
-            Bienvenue, {user?.email?.split('@')[0]}
+            Bienvenue, {user?.email?.split('@')[0] || user?.phone}
           </h2>
           <div className="flex items-center gap-4">
             <button
@@ -178,7 +88,6 @@ const MainLayout = () => {
             >
               {isDark ? <FiSun size={22} className="text-yellow-400" /> : <FiMoon size={22} className="text-gray-600" />}
             </button>
-            <NotificationBell />
             <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm capitalize">
               {user?.role?.replace('_', ' ')}
             </span>
