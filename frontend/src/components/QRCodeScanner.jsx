@@ -5,19 +5,31 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 
 const QRCodeScanner = ({ onScan, onClose }) => {
-  const [scanning, setScanning] = useState(false);  // ← Changé à false
+  const [scanning, setScanning] = useState(false);
   const [employeeId, setEmployeeId] = useState('');
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const scannerRef = useRef(null);
   const scannerContainerRef = useRef(null);
 
-  // Charger la liste des employés
+  // Charger la liste des employés (filtrée pour le journalier)
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
         const response = await api.get('/employees');
-        setEmployees(response.data);
+        const allEmployees = response.data;
+        
+        // Récupérer l'ID de l'employé depuis le profil utilisateur
+        const profileRes = await api.get('/auth/profile');
+        const employeeIdFromProfile = profileRes.data.employeeId;
+        
+        if (employeeIdFromProfile) {
+          // Filtrer pour ne garder que l'employé connecté
+          const filteredEmployees = allEmployees.filter(emp => emp._id === employeeIdFromProfile);
+          setEmployees(filteredEmployees);
+        } else {
+          setEmployees([]);
+        }
       } catch (error) {
         toast.error('Erreur chargement des employés');
       } finally {
@@ -78,7 +90,6 @@ const QRCodeScanner = ({ onScan, onClose }) => {
     };
   }, [employeeId, scanning, onScan, onClose]);
 
-  // Démarrer le scan quand l'employé est sélectionné
   const handleEmployeeSelect = (e) => {
     const id = e.target.value;
     setEmployeeId(id);
