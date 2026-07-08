@@ -5,7 +5,7 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 
 const QRCodeScanner = ({ onScan, onClose }) => {
-  const [scanning, setScanning] = useState(true);
+  const [scanning, setScanning] = useState(false);  // ← Changé à false
   const [employeeId, setEmployeeId] = useState('');
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,9 +27,9 @@ const QRCodeScanner = ({ onScan, onClose }) => {
     fetchEmployees();
   }, []);
 
-  // Initialiser le scanner
+  // Démarrer le scanner quand un employé est sélectionné
   useEffect(() => {
-    if (!scannerContainerRef.current) return;
+    if (!scannerContainerRef.current || !employeeId || !scanning) return;
 
     const html5QrCode = new Html5Qrcode(scannerContainerRef.current.id);
 
@@ -44,12 +44,6 @@ const QRCodeScanner = ({ onScan, onClose }) => {
       setScanning(false);
 
       try {
-        if (!employeeId) {
-          toast.error('Veuillez sélectionner un employé');
-          setScanning(true);
-          return;
-        }
-
         const response = await api.post('/attendance/qr/scan', {
           qrData: decodedText,
           employeeId
@@ -84,6 +78,18 @@ const QRCodeScanner = ({ onScan, onClose }) => {
     };
   }, [employeeId, scanning, onScan, onClose]);
 
+  // Démarrer le scan quand l'employé est sélectionné
+  const handleEmployeeSelect = (e) => {
+    const id = e.target.value;
+    setEmployeeId(id);
+    if (id) {
+      toast.success('Employé sélectionné, vous pouvez scanner');
+      setScanning(true);
+    } else {
+      setScanning(false);
+    }
+  };
+
   const stopScanner = async () => {
     if (scannerRef.current) {
       try {
@@ -114,7 +120,7 @@ const QRCodeScanner = ({ onScan, onClose }) => {
           </label>
           <select
             value={employeeId}
-            onChange={(e) => setEmployeeId(e.target.value)}
+            onChange={handleEmployeeSelect}
             className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             disabled={loading}
           >
@@ -130,6 +136,9 @@ const QRCodeScanner = ({ onScan, onClose }) => {
           {loading && (
             <p className="text-xs text-gray-500 mt-1">Chargement des employés...</p>
           )}
+          {employeeId && scanning && (
+            <p className="text-xs text-green-500 mt-1">✅ Employé sélectionné, vous pouvez scanner</p>
+          )}
         </div>
 
         <div className="bg-black rounded-lg overflow-hidden aspect-square relative">
@@ -138,18 +147,26 @@ const QRCodeScanner = ({ onScan, onClose }) => {
             ref={scannerContainerRef}
             className="w-full h-full"
           />
-          {!scanning && (
+          {!scanning && employeeId && (
             <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
               <div className="text-white text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-2"></div>
-                <p>Scan en cours...</p>
+                <p>Scanner prêt...</p>
+              </div>
+            </div>
+          )}
+          {!employeeId && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75">
+              <div className="text-white text-center">
+                <FiUser size={48} className="mx-auto mb-2 text-gray-400" />
+                <p>Sélectionnez un employé pour scanner</p>
               </div>
             </div>
           )}
         </div>
 
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-4 text-center">
-          📱 Placez le QR Code devant la caméra
+          {employeeId ? '📱 Scannez le QR Code' : '👤 Sélectionnez d\'abord un employé'}
         </p>
 
         <button
