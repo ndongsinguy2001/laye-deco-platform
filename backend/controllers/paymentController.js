@@ -5,6 +5,19 @@ const Attendance = require('../models/Attendance');
 // Fonction de notification désactivée
 const sendNotification = () => {};
 
+// Obtenir tous les paiements (pour le dashboard)
+exports.getPayments = async (req, res) => {
+  try {
+    const payments = await Payment.find()
+      .populate('employeeId', 'firstName lastName')
+      .sort({ createdAt: -1 });
+    res.json(payments);
+  } catch (error) {
+    console.error('Erreur getPayments:', error);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
 // Calculer les paiements pour un employé sur une période
 exports.calculatePayments = async (req, res) => {
   try {

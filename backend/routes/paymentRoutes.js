@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticate, authorize } = require('../middleware/auth');
 const {
+  getPayments,
   calculatePayments,
   getPaymentsByEmployee,
   addAdvance,
@@ -8,6 +9,9 @@ const {
 } = require('../controllers/paymentController');
 
 const router = express.Router();
+
+// Obtenir tous les paiements (dashboard)
+router.get('/', authenticate, authorize('admin', 'director', 'accountant'), getPayments);
 
 router.post('/calculate', authenticate, authorize('admin', 'director', 'accountant'), calculatePayments);
 router.get('/employee/:employeeId', authenticate, authorize('admin', 'director', 'accountant', 'daily_worker'), getPaymentsByEmployee);
