@@ -35,6 +35,7 @@ const Dashboard = () => {
       let payments = [];
       let materials = [];
       let attendance = [];
+      let totalPaymentsAmount = 0;
 
       try {
         const res = await api.get('/employees');
@@ -53,6 +54,9 @@ const Dashboard = () => {
       try {
         const res = await api.get('/payments');
         payments = res.data || [];
+        // Calculer le montant total des paiements
+        totalPaymentsAmount = payments.reduce((sum, p) => sum + p.amount, 0);
+        console.log('💰 Montant total des paiements:', totalPaymentsAmount);
       } catch (e) {
         console.log('⚠️ Erreur chargement paiements:', e.message);
       }
@@ -74,7 +78,7 @@ const Dashboard = () => {
       setStats({
         totalEmployees: employees.length,
         totalEvents: events.length,
-        totalPayments: payments.length,
+        totalPayments: totalPaymentsAmount,
         totalMaterials: materials.length,
         todayAttendance: attendance.length || 0
       });
@@ -192,7 +196,7 @@ const Dashboard = () => {
   const statCards = [
     { title: 'Employés', value: stats.totalEmployees, icon: FiUsers, color: 'bg-blue-500' },
     { title: 'Événements', value: stats.totalEvents, icon: FiCalendar, color: 'bg-green-500' },
-    { title: 'Paiements', value: stats.totalPayments, icon: FiDollarSign, color: 'bg-yellow-500' },
+    { title: 'Paiements (FCFA)', value: stats.totalPayments.toLocaleString(), icon: FiDollarSign, color: 'bg-yellow-500' },
     { title: 'Matériels', value: stats.totalMaterials, icon: FiPackage, color: 'bg-purple-500' },
     { title: 'Présences aujourd\'hui', value: stats.todayAttendance, icon: FiClock, color: 'bg-indigo-500' },
   ];
