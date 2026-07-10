@@ -7,10 +7,10 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          react: ['react', 'react-dom', 'react-router-dom'],
+          vendor: ['react', 'react-dom', 'react-router-dom'],
           icons: ['react-icons'],
           charts: ['recharts'],
-          utils: ['axios', 'jspdf', 'xlsx', 'file-saver']
+          utils: ['axios', 'jspdf', 'xlsx']
         }
       }
     }
