@@ -15,7 +15,6 @@ import Materials from './pages/Materials';
 import Profile from './pages/Profile';
 import Users from './pages/Users';
 
-// Composant pour protéger les routes
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { user } = useAuth();
   
