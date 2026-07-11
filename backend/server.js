@@ -36,8 +36,9 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/materials', materialRoutes);
 app.use('/api/users', userRoutes);
 
+// Route health simplifiée pour les cron-jobs
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Laye Déco API fonctionnelle' });
+  res.status(200).json({ status: 'ok' });
 });
 
 mongoose.connect(process.env.MONGODB_URI)
