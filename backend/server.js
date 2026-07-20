@@ -36,9 +36,11 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/materials', materialRoutes);
 app.use('/api/users', userRoutes);
 
-// Route health simplifiée pour les cron-jobs
+// 👇 Route health ULTRA-LÉGÈRE pour les cron-jobs
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+  res.setHeader('Content-Type', 'text/plain');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.status(200).send('ok');
 });
 
 mongoose.connect(process.env.MONGODB_URI)
