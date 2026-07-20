@@ -11,14 +11,21 @@ const eventSchema = new mongoose.Schema({
     enum: ['religieux', 'prive', 'entreprise', 'foire', 'autre'],
     required: true
   },
-  // 👇 REMPLACER date par startDate et endDate
   startDate: {
     type: Date,
     required: true
   },
   endDate: {
     type: Date,
-    required: true
+    required: true,
+    validate: {
+      validator: function(value) {
+        // Vérifier que endDate est après startDate
+        if (!this.startDate) return true;
+        return value >= this.startDate;
+      },
+      message: 'La date de fin doit être après la date de début'
+    }
   },
   time: {
     type: String,
@@ -60,14 +67,5 @@ const eventSchema = new mongoose.Schema({
     ref: 'User'
   }
 }, { timestamps: true });
-
-// 👇 AJOUT : validation pour que endDate soit après startDate
-eventSchema.pre('validate', function(next) {
-  if (this.startDate && this.endDate && this.endDate < this.startDate) {
-    next(new Error('La date de fin doit être après la date de début'));
-  } else {
-    next();
-  }
-});
 
 module.exports = mongoose.model('Event', eventSchema);
