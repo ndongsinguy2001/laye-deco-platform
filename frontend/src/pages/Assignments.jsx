@@ -16,8 +16,16 @@ const Assignments = () => {
     eventId: '',
     employeeId: '',
     role: 'team_member',
-    dailyRate: ''  // 👈 NOUVEAU
+    dailyRate: ''
   });
+
+  // 👇 Fonction pour formater la période
+  const formatEventPeriod = (event) => {
+    if (!event.startDate || !event.endDate) return 'Date non définie';
+    const start = new Date(event.startDate).toLocaleDateString();
+    const end = new Date(event.endDate).toLocaleDateString();
+    return `${start} - ${end}`;
+  };
 
   useEffect(() => {
     fetchData();
@@ -60,7 +68,6 @@ const Assignments = () => {
     setFormData({ ...formData, [name]: value });
   };
 
-  // 👇 Nouvelle fonction pour détecter l'employé sélectionné
   const selectedEmployee = employees.find(emp => emp._id === formData.employeeId);
   const isDailyWorker = selectedEmployee?.status === 'daily';
 
@@ -77,7 +84,6 @@ const Assignments = () => {
       return;
     }
 
-    // Vérifier le tarif pour les journaliers
     if (isDailyWorker && !formData.dailyRate) {
       toast.error('Veuillez renseigner le tarif journalier pour cet événement');
       return;
@@ -150,7 +156,7 @@ const Assignments = () => {
               <option value="">-- Choisir un événement --</option>
               {events.map((event) => (
                 <option key={event._id} value={event._id}>
-                  {event.clientName} - {new Date(event.date).toLocaleDateString()}
+                  {event.clientName} - {formatEventPeriod(event)}
                 </option>
               ))}
             </select>
@@ -173,7 +179,7 @@ const Assignments = () => {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
-              {selectedEventData?.clientName} - {selectedEventData && new Date(selectedEventData.date).toLocaleDateString()}
+              {selectedEventData?.clientName} - {selectedEventData && formatEventPeriod(selectedEventData)}
             </h2>
             <span className="text-sm text-gray-500 dark:text-gray-400">{assignments.length} employé(s) affecté(s)</span>
           </div>
@@ -188,7 +194,7 @@ const Assignments = () => {
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Employé</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Poste</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Rôle</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Tarif journalier</th>  {/* 👈 NOUVEAU */}
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Tarif journalier</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Téléphone</th>
                     {canManage && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Actions</th>}
                   </tr>
@@ -253,7 +259,7 @@ const Assignments = () => {
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full">
             <h2 className="text-xl font-bold mb-4 dark:text-white">Affecter un employé</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Événement : <strong>{selectedEventData?.clientName}</strong>
+              Événement : <strong>{selectedEventData?.clientName}</strong> ({selectedEventData && formatEventPeriod(selectedEventData)})
             </p>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -277,7 +283,6 @@ const Assignments = () => {
                 </select>
               </div>
 
-              {/* 👇 NOUVEAU : Champ tarif pour les journaliers */}
               {isDailyWorker && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

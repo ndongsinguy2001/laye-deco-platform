@@ -9,7 +9,7 @@ import Pagination from '../components/Pagination';
 const Events = () => {
   const { user } = useAuth();
   const [events, setEvents] = useState([]);
-  const [materials, setMaterials] = useState([]); // 👈 NOUVEAU
+  const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -20,22 +20,22 @@ const Events = () => {
   const [formData, setFormData] = useState({
     clientName: '',
     eventType: 'religieux',
-    date: '',
+    startDate: '',    // 👈 MODIFIÉ
+    endDate: '',      // 👈 MODIFIÉ
     time: '',
     location: '',
     budget: '',
     status: 'planned',
     notes: '',
-    materials: []  // 👈 NOUVEAU
+    materials: []
   });
 
-  // 👇 NOUVEAU : Gestion des matériels sélectionnés
   const [selectedMaterials, setSelectedMaterials] = useState([]);
   const [materialQuantities, setMaterialQuantities] = useState({});
 
   useEffect(() => {
     fetchEvents();
-    fetchMaterials(); // 👈 NOUVEAU
+    fetchMaterials();
   }, []);
 
   useEffect(() => {
@@ -53,7 +53,6 @@ const Events = () => {
     }
   };
 
-  // 👇 NOUVEAU : Récupérer la liste des matériels
   const fetchMaterials = async () => {
     try {
       const response = await api.get('/materials');
@@ -68,7 +67,6 @@ const Events = () => {
     setFormData({ ...formData, [name]: value });
   };
 
-  // 👇 NOUVEAU : Gestion de l'ajout/suppression des matériels
   const handleMaterialSelect = (materialId) => {
     if (selectedMaterials.includes(materialId)) {
       setSelectedMaterials(selectedMaterials.filter(id => id !== materialId));
@@ -87,10 +85,26 @@ const Events = () => {
     }
   };
 
+  // 👇 Calcul de la durée
+  const getDuration = (startDate, endDate) => {
+    if (!startDate || !endDate) return 0;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end - start);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    return diffDays;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // 👇 Vérification des dates
+    if (new Date(formData.endDate) < new Date(formData.startDate)) {
+      toast.error('La date de fin doit être après la date de début.');
+      return;
+    }
+
     try {
-      // 👇 Construire la liste des matériels avec quantités
       const materialsList = selectedMaterials.map(id => ({
         materialId: id,
         quantity: materialQuantities[id] || 1
@@ -99,7 +113,7 @@ const Events = () => {
       const payload = {
         ...formData,
         budget: parseFloat(formData.budget) || 0,
-        materials: materialsList  // 👈 NOUVEAU
+        materials: materialsList
       };
 
       if (editingEvent) {
@@ -135,7 +149,8 @@ const Events = () => {
     setFormData({
       clientName: '',
       eventType: 'religieux',
-      date: '',
+      startDate: '',
+      endDate: '',
       time: '',
       location: '',
       budget: '',
@@ -152,7 +167,8 @@ const Events = () => {
     setFormData({
       clientName: event.clientName,
       eventType: event.eventType,
-      date: event.date ? event.date.split('T')[0] : '',
+      startDate: event.startDate ? event.startDate.split('T')[0] : '',
+      endDate: event.endDate ? event.endDate.split('T')[0] : '',
       time: event.time || '',
       location: event.location || '',
       budget: event.budget || '',
@@ -160,7 +176,6 @@ const Events = () => {
       notes: event.notes || '',
       materials: event.materials || []
     });
-    // Pré-remplir les matériels sélectionnés pour l'édition
     if (event.materials && event.materials.length > 0) {
       const materialIds = event.materials.map(m => m.materialId);
       setSelectedMaterials(materialIds);
@@ -192,12 +207,15 @@ const Events = () => {
     const columns = [
       { key: 'clientName', label: 'Client' },
       { key: 'eventType', label: 'Type', format: (v) => typeLabels[v] || v },
-      { key: 'date', label: 'Date', format: (v) => {
-          if (!v) return '-';
+      { 
+        key: 'startDate', 
+        label: 'Période', 
+        format: (v, row) => {
+          if (!row.startDate || !row.endDate) return '-';
           try {
-            const date = new Date(v);
-            if (isNaN(date.getTime())) return '-';
-            return date.toLocaleDateString('fr-FR');
+            const start = new Date(row.startDate).toLocaleDateString('fr-FR');
+            const end = new Date(row.endDate).toLocaleDateString('fr-FR');
+            return `Du ${start} au ${end}`;
           } catch (e) { return '-'; }
         }
       },
@@ -262,7 +280,6 @@ const Events = () => {
     return labels[type] || type;
   };
 
-  // 👇 NOUVEAU : Récupérer le nom d'un matériel
   const getMaterialName = (id) => {
     const material = materials.find(m => m._id === id);
     return material ? material.name : 'Matériel supprimé';
@@ -353,11 +370,11 @@ const Events = () => {
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Client</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Type</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Date</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Période</th>  {/* 👈 MODIFIÉ */}
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Lieu</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Statut</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Budget</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Matériels</th>  {/* 👈 NOUVEAU */}
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Matériels</th>
                 {(isAdmin || isTeamLeader) && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Actions</th>}
               </tr>
             </thead>
@@ -373,7 +390,22 @@ const Events = () => {
                   <tr key={event._id} className="border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-4 py-3 font-medium dark:text-white">{event.clientName}</td>
                     <td className="px-4 py-3 dark:text-white">{getTypeLabel(event.eventType)}</td>
-                    <td className="px-4 py-3 dark:text-white">{new Date(event.date).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 dark:text-white">
+                      {event.startDate && event.endDate ? (
+                        <div>
+                          <span className="text-sm">
+                            Du {new Date(event.startDate).toLocaleDateString()}
+                            <br />
+                            au {new Date(event.endDate).toLocaleDateString()}
+                          </span>
+                          <span className="ml-2 px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs">
+                            {getDuration(event.startDate, event.endDate)} jours
+                          </span>
+                        </div>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
                     <td className="px-4 py-3 dark:text-white">{event.location || '-'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
@@ -473,28 +505,53 @@ const Events = () => {
                 </select>
               </div>
 
+              {/* 👇 NOUVEAU : Champs startDate et endDate */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date de début *</label>
                   <input
                     type="date"
-                    name="date"
-                    value={formData.date}
+                    name="startDate"
+                    value={formData.startDate}
                     onChange={handleInputChange}
                     className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Heure</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date de fin *</label>
                   <input
-                    type="time"
-                    name="time"
-                    value={formData.time}
+                    type="date"
+                    name="endDate"
+                    value={formData.endDate}
                     onChange={handleInputChange}
                     className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
+                    required
                   />
                 </div>
+              </div>
+
+              {/* 👇 Affichage de la durée */}
+              {formData.startDate && formData.endDate && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    📅 Durée : <strong>{getDuration(formData.startDate, formData.endDate)} jours</strong>
+                    {new Date(formData.endDate) < new Date(formData.startDate) && (
+                      <span className="text-red-500 ml-2">⚠️ La date de fin doit être après la date de début</span>
+                    )}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Heure</label>
+                <input
+                  type="time"
+                  name="time"
+                  value={formData.time}
+                  onChange={handleInputChange}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
+                />
               </div>
 
               <div>
@@ -545,7 +602,7 @@ const Events = () => {
                 />
               </div>
 
-              {/* 👇 NOUVEAU : Section matériels */}
+              {/* Section matériels */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
                   <FiPackage className="text-primary-600" />

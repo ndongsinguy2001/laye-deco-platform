@@ -29,6 +29,14 @@ const Attendance = () => {
   const isDailyWorker = user?.role === 'daily_worker';
   const canManage = isAdmin || isTeamLeader;
 
+  // Fonction pour formater la période
+  const formatEventPeriod = (event) => {
+    if (!event.startDate || !event.endDate) return 'Date non définie';
+    const start = new Date(event.startDate).toLocaleDateString();
+    const end = new Date(event.endDate).toLocaleDateString();
+    return `${start} - ${end}`;
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -55,25 +63,16 @@ const Attendance = () => {
           try {
             const userProfileRes = await api.get('/auth/profile');
             const userProfile = userProfileRes.data;
-            console.log('👤 Profil utilisateur:', userProfile);
-            
             const employeeId = userProfile.employeeId;
-            console.log('👤 ID employé associé:', employeeId);
             
-            if (!employeeId) {
-              console.log('⚠️ Aucun employé associé à cet utilisateur');
-              eventsData = [];
-            } else {
+            if (employeeId) {
               const assignmentsRes = await api.get(`/assignments/employee/${employeeId}`);
-              console.log('📋 Affectations reçues:', assignmentsRes.data);
-              
               const assignedEventIds = assignmentsRes.data
                 .map(a => a.eventId?._id || a.eventId)
                 .filter(id => id);
-              console.log('📋 IDs des événements affectés:', assignedEventIds);
-              
               eventsData = eventsData.filter(event => assignedEventIds.includes(event._id));
-              console.log('📋 Événements filtrés pour journalier:', eventsData.length);
+            } else {
+              eventsData = [];
             }
           } catch (assignError) {
             console.error('❌ Erreur chargement affectations:', assignError);
@@ -110,7 +109,6 @@ const Attendance = () => {
       if (isDailyWorker) {
         const currentUserId = user?.id;
         data = data.filter(att => att.employeeId?._id === currentUserId || att.employeeId === currentUserId);
-        console.log('📋 Pointages du journalier:', data.length);
       }
       
       setAttendances(data);
@@ -234,7 +232,7 @@ const Attendance = () => {
               <option value="">-- Choisir un événement --</option>
               {events.map((event) => (
                 <option key={event._id} value={event._id}>
-                  {event.clientName} - {new Date(event.date).toLocaleDateString()}
+                  {event.clientName} - {formatEventPeriod(event)}
                 </option>
               ))}
             </select>
@@ -286,7 +284,7 @@ const Attendance = () => {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
-              {selectedEventData?.clientName} - {selectedEventData && new Date(selectedEventData.date).toLocaleDateString()}
+              {selectedEventData?.clientName} - {selectedEventData && formatEventPeriod(selectedEventData)}
             </h2>
             <span className="text-sm text-gray-500 dark:text-gray-400">{attendances.length} pointage(s)</span>
           </div>

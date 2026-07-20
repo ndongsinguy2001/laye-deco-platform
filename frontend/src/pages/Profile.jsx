@@ -17,6 +17,15 @@ const Profile = () => {
     confirmPassword: ''
   });
 
+  // 👇 Fonction pour formater la période d'un événement
+  const formatEventPeriod = (event) => {
+    if (!event) return 'Événement supprimé';
+    if (!event.startDate || !event.endDate) return 'Date non définie';
+    const start = new Date(event.startDate).toLocaleDateString();
+    const end = new Date(event.endDate).toLocaleDateString();
+    return `${start} - ${end}`;
+  };
+
   useEffect(() => {
     fetchProfile();
     if (user?.role === 'daily_worker') {
@@ -404,7 +413,7 @@ const Profile = () => {
                   <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
                       <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Événement</th>
-                      <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Date</th>
+                      <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Période</th>  {/* 👈 MODIFIÉ */}
                       <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Arrivée</th>
                       <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Départ</th>
                       <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Statut</th>
@@ -418,7 +427,7 @@ const Profile = () => {
                           {att.eventId?.clientName || 'Événement supprimé'}
                         </td>
                         <td className="px-4 py-2 dark:text-white">
-                          {att.eventId?.date ? new Date(att.eventId.date).toLocaleDateString() : '-'}
+                          {att.eventId ? formatEventPeriod(att.eventId) : '-'}
                         </td>
                         <td className="px-4 py-2 dark:text-white">
                           {att.checkIn ? new Date(att.checkIn).toLocaleTimeString() : '-'}

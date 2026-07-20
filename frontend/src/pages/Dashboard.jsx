@@ -28,6 +28,14 @@ const Dashboard = () => {
     fetchTeamData();
   }, []);
 
+  // 👇 Fonction pour formater la période
+  const formatEventPeriod = (event) => {
+    if (!event.startDate || !event.endDate) return 'Date non définie';
+    const start = new Date(event.startDate).toLocaleDateString();
+    const end = new Date(event.endDate).toLocaleDateString();
+    return `${start} - ${end}`;
+  };
+
   const fetchStats = async () => {
     try {
       let employees = [];
@@ -54,9 +62,7 @@ const Dashboard = () => {
       try {
         const res = await api.get('/payments');
         payments = res.data || [];
-        // Calculer le montant total des paiements
         totalPaymentsAmount = payments.reduce((sum, p) => sum + p.amount, 0);
-        console.log('💰 Montant total des paiements:', totalPaymentsAmount);
       } catch (e) {
         console.log('⚠️ Erreur chargement paiements:', e.message);
       }
@@ -105,10 +111,12 @@ const Dashboard = () => {
       
       const months = {};
       events.forEach(event => {
-        const date = new Date(event.date);
-        const month = date.toLocaleString('fr-FR', { month: 'short' });
-        if (!months[month]) months[month] = 0;
-        months[month]++;
+        if (event.startDate) {
+          const date = new Date(event.startDate);
+          const month = date.toLocaleString('fr-FR', { month: 'short' });
+          if (!months[month]) months[month] = 0;
+          months[month]++;
+        }
       });
 
       const data = Object.keys(months).map(key => ({
@@ -262,7 +270,7 @@ const Dashboard = () => {
                   <div>
                     <p className="font-medium text-gray-800 dark:text-white">{event.clientName}</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {new Date(event.date).toLocaleDateString()}
+                      {formatEventPeriod(event)}
                     </p>
                   </div>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${

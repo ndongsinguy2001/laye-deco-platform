@@ -9,29 +9,69 @@ exports.createEvent = async (req, res) => {
     const {
       clientName,
       eventType,
-      date,
-      time,
-      location,
-      responsible,
-      budget,
-      status,
-      notes
-    } = req.body;
-
-    const event = new Event({
-      clientName,
-      eventType,
-      date,
+      startDate,    // 👈 MODIFIÉ
+      endDate,      // 👈 MODIFIÉ
       time,
       location,
       responsible,
       budget,
       status,
       notes,
+      materials
+    } = req.body;
+
+    // 👈 Vérification que endDate est après startDate
+    if (new Date(endDate) < new Date(startDate)) {
+      return res.status(400).json({ message: 'La date de fin doit être après la date de début.' });
+    }
+
+    const event = new Event({
+      clientName,
+      eventType,
+      startDate,
+      endDate,
+      time,
+      location,
+      responsible,
+      budget,
+      status,
+      notes,
+      materials: materials || [],
       createdBy: req.user.id
     });
 
     await event.save();
+
+    // Notifications
+    try {
+      const typeLabels = {
+        religieux: 'Cérémonie religieuse',
+        prive: 'Événement privé',
+        entreprise: 'Événement d\'entreprise',
+        foire: 'Foire',
+        autre: 'Autre'
+      };
+
+      sendNotification('admin', {
+        type: 'event',
+        message: `📅 Nouvel événement : ${clientName} - ${typeLabels[eventType] || eventType} (du ${new Date(startDate).toLocaleDateString()} au ${new Date(endDate).toLocaleDateString()})`,
+        timestamp: new Date().toISOString()
+      });
+
+      sendNotification('director', {
+        type: 'event',
+        message: `📅 Nouvel événement créé : ${clientName} - ${typeLabels[eventType] || eventType}`,
+        timestamp: new Date().toISOString()
+      });
+
+      sendNotification('team_leader', {
+        type: 'event',
+        message: `📅 Nouvel événement : ${clientName} du ${new Date(startDate).toLocaleDateString()} au ${new Date(endDate).toLocaleDateString()}`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (notifError) {
+      console.log('⚠️ Erreur notification:', notifError.message);
+    }
 
     res.status(201).json({
       message: 'Événement créé avec succès.',
@@ -49,7 +89,7 @@ exports.getAllEvents = async (req, res) => {
     const events = await Event.find()
       .populate('responsible', 'email')
       .populate('createdBy', 'email')
-      .sort({ date: -1 });
+      .sort({ startDate: -1 });  // 👈 MODIFIÉ
     res.json(events);
   } catch (error) {
     console.error('Erreur getAllEvents:', error);
@@ -76,6 +116,13 @@ exports.getEventById = async (req, res) => {
 // Mettre à jour un événement
 exports.updateEvent = async (req, res) => {
   try {
+    // 👈 Vérification si startDate et endDate sont fournis
+    if (req.body.startDate && req.body.endDate) {
+      if (new Date(req.body.endDate) < new Date(req.body.startDate)) {
+        return res.status(400).json({ message: 'La date de fin doit être après la date de début.' });
+      }
+    }
+
     const event = await Event.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -83,6 +130,34 @@ exports.updateEvent = async (req, res) => {
     );
     if (!event) {
       return res.status(404).json({ message: 'Événement non trouvé.' });
+    }
+
+    // Notification si le statut change
+    if (req.body.status && req.body.status !== event.status) {
+      try {
+        const statusLabels = {
+          planned: 'Planifié',
+          in_progress: 'En cours',
+          completed: 'Terminé',
+          cancelled: 'Annulé'
+        };
+
+        sendNotification('admin', {
+          type: 'event',
+          message: `📅 ${event.clientName} : Statut changé en "${statusLabels[req.body.status] || req.body.status}"`,
+          timestamp: new Date().toISOString()
+        });
+
+        if (req.body.status === 'completed') {
+          sendNotification('team_leader', {
+            type: 'event',
+            message: `✅ Événement terminé : ${event.clientName}`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      } catch (notifError) {
+        console.log('⚠️ Erreur notification:', notifError.message);
+      }
     }
 
     res.json({ message: 'Événement mis à jour.', event });
@@ -100,6 +175,16 @@ exports.deleteEvent = async (req, res) => {
       return res.status(404).json({ message: 'Événement non trouvé.' });
     }
 
+    try {
+      sendNotification('admin', {
+        type: 'event',
+        message: `📅 Événement supprimé : ${event.clientName}`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (notifError) {
+      console.log('⚠️ Erreur notification:', notifError.message);
+    }
+
     res.json({ message: 'Événement supprimé.' });
   } catch (error) {
     console.error('Erreur deleteEvent:', error);
@@ -113,7 +198,7 @@ exports.getEventsByStatus = async (req, res) => {
     const { status } = req.params;
     const events = await Event.find({ status })
       .populate('responsible', 'email')
-      .sort({ date: 1 });
+      .sort({ startDate: 1 });  // 👈 MODIFIÉ
     res.json(events);
   } catch (error) {
     console.error('Erreur getEventsByStatus:', error);
