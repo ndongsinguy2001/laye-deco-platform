@@ -16,13 +16,17 @@ const assignmentSchema = new mongoose.Schema({
     enum: ['responsible', 'team_member', 'support'],
     default: 'team_member'
   },
+  dailyRate: {                        // 👈 NOUVEAU CHAMP
+    type: Number,
+    required: true,
+    min: 0
+  },
   assignedAt: {
     type: Date,
     default: Date.now
   }
 }, { timestamps: true });
 
-// Index pour éviter les doublons
 assignmentSchema.index({ eventId: 1, employeeId: 1 }, { unique: true });
 
 module.exports = mongoose.model('Assignment', assignmentSchema);

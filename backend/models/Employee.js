@@ -34,10 +34,7 @@ const employeeSchema = new mongoose.Schema({
     enum: ['permanent', 'daily'],
     required: true
   },
-  dailyRate: {
-    type: Number,
-    required: function() { return this.status === 'daily'; }
-  },
+  // 👇 SUPPRESSION DE dailyRate
   salary: {
     type: Number,
     required: function() { return this.status === 'permanent'; }

@@ -1,6 +1,7 @@
 const Payment = require('../models/Payment');
 const Employee = require('../models/Employee');
 const Attendance = require('../models/Attendance');
+const Assignment = require('../models/Assignment');
 
 // Fonction de notification désactivée
 const sendNotification = () => {};
@@ -32,22 +33,46 @@ exports.calculatePayments = async (req, res) => {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
 
+    // Récupérer les pointages de la période
     const attendances = await Attendance.find({
       employeeId,
       checkIn: { $gte: startDate, $lte: endDate },
       status: 'present'
     });
 
-    const totalDays = attendances.length;
-    const totalEvents = new Set(attendances.map(a => a.eventId.toString())).size;
+    // Récupérer toutes les affectations de l'employé
+    const assignments = await Assignment.find({ employeeId });
 
-    let amount = 0;
-    if (employee.status === 'daily') {
-      amount = totalDays * employee.dailyRate;
-    } else {
-      amount = employee.salary || 0;
+    // Créer un map des tarifs par événement
+    const rateMap = {};
+    assignments.forEach(ass => {
+      rateMap[ass.eventId.toString()] = ass.dailyRate || 0;
+    });
+
+    // Calculer le montant total
+    let totalAmount = 0;
+    let totalDays = 0;
+    const eventSet = new Set();
+
+    for (const att of attendances) {
+      const eventId = att.eventId.toString();
+      const rate = rateMap[eventId] || 0;
+      totalAmount += rate;
+      totalDays += 1;
+      eventSet.add(eventId);
     }
 
+    const totalEvents = eventSet.size;
+
+    // Déterminer le montant pour les permanents
+    let amount = 0;
+    if (employee.status === 'permanent') {
+      amount = employee.salary || 0;
+    } else {
+      amount = totalAmount;
+    }
+
+    // Vérifier si un paiement existe déjà
     let payment = await Payment.findOne({ employeeId, period });
 
     if (payment) {

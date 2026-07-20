@@ -15,7 +15,8 @@ const Assignments = () => {
   const [formData, setFormData] = useState({
     eventId: '',
     employeeId: '',
-    role: 'team_member'
+    role: 'team_member',
+    dailyRate: ''  // 👈 NOUVEAU
   });
 
   useEffect(() => {
@@ -59,6 +60,10 @@ const Assignments = () => {
     setFormData({ ...formData, [name]: value });
   };
 
+  // 👇 Nouvelle fonction pour détecter l'employé sélectionné
+  const selectedEmployee = employees.find(emp => emp._id === formData.employeeId);
+  const isDailyWorker = selectedEmployee?.status === 'daily';
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -72,17 +77,24 @@ const Assignments = () => {
       return;
     }
 
+    // Vérifier le tarif pour les journaliers
+    if (isDailyWorker && !formData.dailyRate) {
+      toast.error('Veuillez renseigner le tarif journalier pour cet événement');
+      return;
+    }
+
     try {
       const payload = {
         eventId: selectedEvent,
         employeeId: formData.employeeId,
-        role: formData.role
+        role: formData.role,
+        dailyRate: isDailyWorker ? parseFloat(formData.dailyRate) : 0
       };
 
       await api.post('/assignments', payload);
       toast.success('Employé affecté avec succès');
       setShowModal(false);
-      setFormData({ eventId: selectedEvent, employeeId: '', role: 'team_member' });
+      setFormData({ eventId: selectedEvent, employeeId: '', role: 'team_member', dailyRate: '' });
       fetchAssignmentsByEvent(selectedEvent);
       fetchData();
     } catch (error) {
@@ -146,7 +158,7 @@ const Assignments = () => {
           {canManage && selectedEvent && (
             <button
               onClick={() => {
-                setFormData({ eventId: selectedEvent, employeeId: '', role: 'team_member' });
+                setFormData({ eventId: selectedEvent, employeeId: '', role: 'team_member', dailyRate: '' });
                 setShowModal(true);
               }}
               className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
@@ -176,6 +188,7 @@ const Assignments = () => {
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Employé</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Poste</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Rôle</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Tarif journalier</th>  {/* 👈 NOUVEAU */}
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Téléphone</th>
                     {canManage && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Actions</th>}
                   </tr>
@@ -203,6 +216,11 @@ const Assignments = () => {
                           {getRoleLabel(assignment.role)}
                         </span>
                       </td>
+                      <td className="px-4 py-3 dark:text-white">
+                        {assignment.employeeId?.status === 'daily' 
+                          ? `${assignment.dailyRate || 0} FCFA` 
+                          : 'Permanent'}
+                      </td>
                       <td className="px-4 py-3 dark:text-white">{assignment.employeeId?.phone || '-'}</td>
                       {canManage && (
                         <td className="px-4 py-3">
@@ -229,6 +247,7 @@ const Assignments = () => {
         </div>
       )}
 
+      {/* Modal d'affectation */}
       {showModal && selectedEvent && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full">
@@ -251,11 +270,36 @@ const Assignments = () => {
                     .filter(e => e.isActive !== false)
                     .map((emp) => (
                       <option key={emp._id} value={emp._id}>
-                        {emp.firstName} {emp.lastName} - {emp.position || 'Sans poste'}
+                        {emp.firstName} {emp.lastName} - {emp.position || 'Sans poste'} 
+                        {emp.status === 'daily' ? ' (Journalier)' : ' (Permanent)'}
                       </option>
                     ))}
                 </select>
               </div>
+
+              {/* 👇 NOUVEAU : Champ tarif pour les journaliers */}
+              {isDailyWorker && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Tarif journalier pour cet événement (FCFA) *
+                  </label>
+                  <input
+                    type="number"
+                    name="dailyRate"
+                    value={formData.dailyRate}
+                    onChange={handleInputChange}
+                    placeholder="Ex: 7500"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
+                    required
+                    min="0"
+                    step="100"
+                  />
+                  <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                    💰 Ce tarif sera utilisé pour calculer le paiement de cet événement.
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rôle</label>
                 <select
@@ -275,7 +319,7 @@ const Assignments = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setShowModal(false); setFormData({ eventId: selectedEvent, employeeId: '', role: 'team_member' }); }}
+                  onClick={() => { setShowModal(false); setFormData({ eventId: selectedEvent, employeeId: '', role: 'team_member', dailyRate: '' }); }}
                   className="flex-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 py-2 rounded-lg dark:text-white"
                 >
                   Annuler

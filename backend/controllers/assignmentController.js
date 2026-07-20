@@ -7,8 +7,9 @@ const sendNotification = () => {};
 
 exports.assignEmployee = async (req, res) => {
   try {
-    const { eventId, employeeId, role } = req.body;
+    const { eventId, employeeId, role, dailyRate } = req.body;  // 👈 AJOUT dailyRate
 
+    // Vérifications
     const event = await Event.findById(eventId);
     if (!event) {
       return res.status(404).json({ message: 'Événement non trouvé.' });
@@ -19,21 +20,54 @@ exports.assignEmployee = async (req, res) => {
       return res.status(404).json({ message: 'Employé non trouvé.' });
     }
 
+    // Vérifier si dailyRate est fourni pour les journaliers
+    if (employee.status === 'daily' && !dailyRate) {
+      return res.status(400).json({ 
+        message: 'Veuillez renseigner le tarif journalier pour cet événement.' 
+      });
+    }
+
+    // Vérifier si l'employé est déjà affecté
     const existing = await Assignment.findOne({ eventId, employeeId });
     if (existing) {
       return res.status(400).json({ message: 'Employé déjà affecté à cet événement.' });
     }
 
+    // Créer l'affectation avec le tarif
     const assignment = new Assignment({
       eventId,
       employeeId,
-      role: role || 'team_member'
+      role: role || 'team_member',
+      dailyRate: dailyRate || 0  // 👈 AJOUT
     });
 
     await assignment.save();
 
     employee.totalEvents += 1;
     await employee.save();
+
+    // Notifications (optionnelles)
+    try {
+      const roleLabel = {
+        responsible: 'Responsable',
+        team_member: 'Membre d\'équipe',
+        support: 'Support'
+      };
+
+      sendNotification('team_leader', {
+        type: 'assignment',
+        message: `${employee.firstName} ${employee.lastName} a été affecté à "${event.clientName}" avec un tarif de ${dailyRate || 0} FCFA/jour`,
+        timestamp: new Date().toISOString()
+      });
+
+      sendNotification('admin', {
+        type: 'assignment',
+        message: `Nouvelle affectation : ${employee.firstName} ${employee.lastName} → ${event.clientName}`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (notifError) {
+      console.log('⚠️ Erreur notification:', notifError.message);
+    }
 
     res.status(201).json({
       message: 'Employé affecté avec succès.',
@@ -49,7 +83,7 @@ exports.getAssignmentsByEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
     const assignments = await Assignment.find({ eventId })
-      .populate('employeeId', 'firstName lastName phone position')
+      .populate('employeeId', 'firstName lastName phone position status')  // 👈 AJOUT status
       .populate('eventId', 'clientName date');
     res.json(assignments);
   } catch (error) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCalendar, FiMapPin, FiUser, FiDollarSign, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCalendar, FiMapPin, FiUser, FiDollarSign, FiDownload, FiPackage } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -9,6 +9,7 @@ import Pagination from '../components/Pagination';
 const Events = () => {
   const { user } = useAuth();
   const [events, setEvents] = useState([]);
+  const [materials, setMaterials] = useState([]); // 👈 NOUVEAU
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -18,17 +19,23 @@ const Events = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [formData, setFormData] = useState({
     clientName: '',
-    eventType: 'mariage',
+    eventType: 'religieux',
     date: '',
     time: '',
     location: '',
     budget: '',
     status: 'planned',
-    notes: ''
+    notes: '',
+    materials: []  // 👈 NOUVEAU
   });
+
+  // 👇 NOUVEAU : Gestion des matériels sélectionnés
+  const [selectedMaterials, setSelectedMaterials] = useState([]);
+  const [materialQuantities, setMaterialQuantities] = useState({});
 
   useEffect(() => {
     fetchEvents();
+    fetchMaterials(); // 👈 NOUVEAU
   }, []);
 
   useEffect(() => {
@@ -46,17 +53,53 @@ const Events = () => {
     }
   };
 
+  // 👇 NOUVEAU : Récupérer la liste des matériels
+  const fetchMaterials = async () => {
+    try {
+      const response = await api.get('/materials');
+      setMaterials(response.data);
+    } catch (error) {
+      console.error('Erreur chargement matériels:', error);
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
+  // 👇 NOUVEAU : Gestion de l'ajout/suppression des matériels
+  const handleMaterialSelect = (materialId) => {
+    if (selectedMaterials.includes(materialId)) {
+      setSelectedMaterials(selectedMaterials.filter(id => id !== materialId));
+      const newQuantities = { ...materialQuantities };
+      delete newQuantities[materialId];
+      setMaterialQuantities(newQuantities);
+    } else {
+      setSelectedMaterials([...selectedMaterials, materialId]);
+      setMaterialQuantities({ ...materialQuantities, [materialId]: 1 });
+    }
+  };
+
+  const handleQuantityChange = (materialId, quantity) => {
+    if (quantity > 0) {
+      setMaterialQuantities({ ...materialQuantities, [materialId]: quantity });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // 👇 Construire la liste des matériels avec quantités
+      const materialsList = selectedMaterials.map(id => ({
+        materialId: id,
+        quantity: materialQuantities[id] || 1
+      }));
+
       const payload = {
         ...formData,
-        budget: parseFloat(formData.budget) || 0
+        budget: parseFloat(formData.budget) || 0,
+        materials: materialsList  // 👈 NOUVEAU
       };
 
       if (editingEvent) {
@@ -91,14 +134,17 @@ const Events = () => {
   const resetForm = () => {
     setFormData({
       clientName: '',
-      eventType: 'mariage',
+      eventType: 'religieux',
       date: '',
       time: '',
       location: '',
       budget: '',
       status: 'planned',
-      notes: ''
+      notes: '',
+      materials: []
     });
+    setSelectedMaterials([]);
+    setMaterialQuantities({});
   };
 
   const openEditModal = (event) => {
@@ -111,30 +157,28 @@ const Events = () => {
       location: event.location || '',
       budget: event.budget || '',
       status: event.status,
-      notes: event.notes || ''
+      notes: event.notes || '',
+      materials: event.materials || []
     });
-    setShowModal(true);
-  };
-
-  const safeDateFormat = (value) => {
-    if (!value) return '-';
-    try {
-      const date = new Date(value);
-      if (isNaN(date.getTime())) return '-';
-      return date.toLocaleDateString('fr-FR');
-    } catch (e) {
-      return '-';
+    // Pré-remplir les matériels sélectionnés pour l'édition
+    if (event.materials && event.materials.length > 0) {
+      const materialIds = event.materials.map(m => m.materialId);
+      setSelectedMaterials(materialIds);
+      const quantities = {};
+      event.materials.forEach(m => {
+        quantities[m.materialId] = m.quantity || 1;
+      });
+      setMaterialQuantities(quantities);
     }
+    setShowModal(true);
   };
 
   const handleExport = (format) => {
     const typeLabels = {
-      bapteme: 'Baptême',
-      mariage: 'Mariage',
-      anniversaire: 'Anniversaire',
       religieux: 'Cérémonie religieuse',
       prive: 'Événement privé',
       entreprise: 'Événement d\'entreprise',
+      foire: 'Foire',
       autre: 'Autre'
     };
 
@@ -148,7 +192,15 @@ const Events = () => {
     const columns = [
       { key: 'clientName', label: 'Client' },
       { key: 'eventType', label: 'Type', format: (v) => typeLabels[v] || v },
-      { key: 'date', label: 'Date', format: (v) => safeDateFormat(v) },
+      { key: 'date', label: 'Date', format: (v) => {
+          if (!v) return '-';
+          try {
+            const date = new Date(v);
+            if (isNaN(date.getTime())) return '-';
+            return date.toLocaleDateString('fr-FR');
+          } catch (e) { return '-'; }
+        }
+      },
       { key: 'location', label: 'Lieu' },
       { key: 'status', label: 'Statut', format: (v) => statusLabels[v] || v },
       { key: 'budget', label: 'Budget (FCFA)', format: (v) => v ? v.toLocaleString() : '-' }
@@ -201,15 +253,19 @@ const Events = () => {
 
   const getTypeLabel = (type) => {
     const labels = {
-      bapteme: 'Baptême',
-      mariage: 'Mariage',
-      anniversaire: 'Anniversaire',
       religieux: 'Cérémonie religieuse',
       prive: 'Événement privé',
       entreprise: 'Événement d\'entreprise',
+      foire: 'Foire',
       autre: 'Autre'
     };
     return labels[type] || type;
+  };
+
+  // 👇 NOUVEAU : Récupérer le nom d'un matériel
+  const getMaterialName = (id) => {
+    const material = materials.find(m => m._id === id);
+    return material ? material.name : 'Matériel supprimé';
   };
 
   const isAdmin = user?.role === 'admin' || user?.role === 'director';
@@ -237,7 +293,7 @@ const Events = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
-        <h1 className="text-2xl font-bold text-gray-800">Événements</h1>
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Événements</h1>
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => handleExport('excel')}
@@ -262,22 +318,23 @@ const Events = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-md p-4 mb-6">
+      {/* Filtres */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 mb-6">
         <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-2">
+          <div className="flex-1 flex items-center gap-2 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2">
             <FiSearch className="text-gray-400" />
             <input
               type="text"
               placeholder="Rechercher par client ou lieu..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 outline-none"
+              className="flex-1 outline-none dark:bg-transparent dark:text-white"
             />
           </div>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2"
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
           >
             <option value="all">Tous les statuts</option>
             <option value="planned">Planifié</option>
@@ -288,40 +345,58 @@ const Events = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-md p-6">
+      {/* Liste */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Client</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Type</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Date</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Lieu</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Statut</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Budget</th>
-                {(isAdmin || isTeamLeader) && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600">Actions</th>}
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Client</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Type</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Date</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Lieu</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Statut</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Budget</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Matériels</th>  {/* 👈 NOUVEAU */}
+                {(isAdmin || isTeamLeader) && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 dark:text-gray-300">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {paginatedEvents.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin || isTeamLeader ? 7 : 6} className="text-center py-8 text-gray-500">
+                  <td colSpan={isAdmin || isTeamLeader ? 8 : 7} className="text-center py-8 text-gray-500 dark:text-gray-400">
                     Aucun événement trouvé
                   </td>
                 </tr>
               ) : (
                 paginatedEvents.map((event) => (
-                  <tr key={event._id} className="border-t hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium">{event.clientName}</td>
-                    <td className="px-4 py-3">{getTypeLabel(event.eventType)}</td>
-                    <td className="px-4 py-3">{new Date(event.date).toLocaleDateString()}</td>
-                    <td className="px-4 py-3">{event.location || '-'}</td>
+                  <tr key={event._id} className="border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-4 py-3 font-medium dark:text-white">{event.clientName}</td>
+                    <td className="px-4 py-3 dark:text-white">{getTypeLabel(event.eventType)}</td>
+                    <td className="px-4 py-3 dark:text-white">{new Date(event.date).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 dark:text-white">{event.location || '-'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
                         {getStatusLabel(event.status)}
                       </span>
                     </td>
-                    <td className="px-4 py-3">{event.budget ? `${event.budget.toLocaleString()} FCFA` : '-'}</td>
+                    <td className="px-4 py-3 dark:text-white">{event.budget ? `${event.budget.toLocaleString()} FCFA` : '-'}</td>
+                    <td className="px-4 py-3 dark:text-white">
+                      {event.materials && event.materials.length > 0 ? (
+                        <div className="text-xs">
+                          {event.materials.slice(0, 2).map((m, idx) => (
+                            <span key={idx} className="block">
+                              {getMaterialName(m.materialId)} × {m.quantity || 1}
+                            </span>
+                          ))}
+                          {event.materials.length > 2 && (
+                            <span className="text-gray-400">+{event.materials.length - 2} autres</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
                     {(isAdmin || isTeamLeader) && (
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
@@ -362,88 +437,154 @@ const Events = () => {
         />
       </div>
 
+      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-4 dark:text-white">
               {editingEvent ? 'Modifier l\'événement' : 'Nouvel événement'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <input
-                type="text"
-                name="clientName"
-                placeholder="Nom du client *"
-                value={formData.clientName}
-                onChange={handleInputChange}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500"
-                required
-              />
-              <select
-                name="eventType"
-                value={formData.eventType}
-                onChange={handleInputChange}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-              >
-                <option value="bapteme">Baptême</option>
-                <option value="mariage">Mariage</option>
-                <option value="anniversaire">Anniversaire</option>
-                <option value="religieux">Cérémonie religieuse</option>
-                <option value="prive">Événement privé</option>
-                <option value="entreprise">Événement d'entreprise</option>
-                <option value="autre">Autre</option>
-              </select>
-              <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nom du client *</label>
                 <input
-                  type="date"
-                  name="date"
-                  value={formData.date}
+                  type="text"
+                  name="clientName"
+                  value={formData.clientName}
                   onChange={handleInputChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
                   required
                 />
-                <input
-                  type="time"
-                  name="time"
-                  value={formData.time}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type d'événement</label>
+                <select
+                  name="eventType"
+                  value={formData.eventType}
                   onChange={handleInputChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="religieux">Cérémonie religieuse</option>
+                  <option value="prive">Événement privé</option>
+                  <option value="entreprise">Événement d'entreprise</option>
+                  <option value="foire">Foire</option>
+                  <option value="autre">Autre</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
+                  <input
+                    type="date"
+                    name="date"
+                    value={formData.date}
+                    onChange={handleInputChange}
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Heure</label>
+                  <input
+                    type="time"
+                    name="time"
+                    value={formData.time}
+                    onChange={handleInputChange}
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lieu</label>
+                <input
+                  type="text"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleInputChange}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
                 />
               </div>
-              <input
-                type="text"
-                name="location"
-                placeholder="Lieu"
-                value={formData.location}
-                onChange={handleInputChange}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-              />
-              <input
-                type="number"
-                name="budget"
-                placeholder="Budget (FCFA)"
-                value={formData.budget}
-                onChange={handleInputChange}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-              />
-              <select
-                name="status"
-                value={formData.status}
-                onChange={handleInputChange}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-              >
-                <option value="planned">Planifié</option>
-                <option value="in_progress">En cours</option>
-                <option value="completed">Terminé</option>
-                <option value="cancelled">Annulé</option>
-              </select>
-              <textarea
-                name="notes"
-                placeholder="Notes"
-                value={formData.notes}
-                onChange={handleInputChange}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                rows="3"
-              />
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Budget (FCFA)</label>
+                <input
+                  type="number"
+                  name="budget"
+                  value={formData.budget}
+                  onChange={handleInputChange}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Statut</label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleInputChange}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="planned">Planifié</option>
+                  <option value="in_progress">En cours</option>
+                  <option value="completed">Terminé</option>
+                  <option value="cancelled">Annulé</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</label>
+                <textarea
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleInputChange}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
+                  rows="2"
+                />
+              </div>
+
+              {/* 👇 NOUVEAU : Section matériels */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
+                  <FiPackage className="text-primary-600" />
+                  Matériels utilisés
+                </label>
+                {materials.length === 0 ? (
+                  <p className="text-sm text-gray-500">Aucun matériel disponible. Créez d'abord des matériels.</p>
+                ) : (
+                  <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
+                    {materials.map((material) => (
+                      <div key={material._id} className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedMaterials.includes(material._id)}
+                          onChange={() => handleMaterialSelect(material._id)}
+                          className="w-4 h-4 text-primary-600"
+                        />
+                        <span className="flex-1 text-sm dark:text-white">{material.name}</span>
+                        {selectedMaterials.includes(material._id) && (
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs text-gray-500 dark:text-gray-400">Qté:</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={materialQuantities[material._id] || 1}
+                              onChange={(e) => handleQuantityChange(material._id, parseInt(e.target.value) || 1)}
+                              className="w-16 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm dark:bg-gray-700 dark:text-white"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Sélectionnez les matériels nécessaires pour cet événement.
+                </p>
+              </div>
+
               <div className="flex gap-3 pt-4">
                 <button type="submit" className="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg">
                   {editingEvent ? 'Modifier' : 'Créer'}
@@ -451,7 +592,7 @@ const Events = () => {
                 <button
                   type="button"
                   onClick={() => { setShowModal(false); setEditingEvent(null); resetForm(); }}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 py-2 rounded-lg"
+                  className="flex-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 py-2 rounded-lg dark:text-white"
                 >
                   Annuler
                 </button>

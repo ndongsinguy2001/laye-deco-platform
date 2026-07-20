@@ -8,7 +8,7 @@ const eventSchema = new mongoose.Schema({
   },
   eventType: {
     type: String,
-    enum: ['bapteme', 'mariage', 'anniversaire', 'religieux', 'prive', 'entreprise', 'autre'],
+    enum: ['religieux', 'prive', 'entreprise', 'foire', 'autre'], // 👈 MODIFIÉ
     required: true
   },
   date: {
@@ -39,6 +39,17 @@ const eventSchema = new mongoose.Schema({
   notes: {
     type: String
   },
+  materials: [{                              // 👈 NOUVEAU CHAMP
+    materialId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Material'
+    },
+    quantity: {
+      type: Number,
+      default: 1,
+      min: 1
+    }
+  }],
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
